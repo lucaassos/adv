@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Protótipo - Inteligência Avançada</title>
+    <title>Protótipo - Foco no Texto</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -46,8 +46,7 @@
         }
         
         .strategic-report {
-            border: 2px solid #1f6fdf;
-            box-shadow: 0 0 20px rgba(31, 111, 235, 0.4);
+            animation: border-glow 2s infinite alternate;
         }
 
         .glow-button {
@@ -88,13 +87,16 @@
             border-left: 3px solid #22c55e;
             color: #a7f3d0;
         }
-        
-        .risk-factor {
-             background-color: rgba(239, 68, 68, 0.1);
-            border-left: 3px solid #ef4444;
-            color: #fca5a5;
+
+        .typewriter-text::after {
+            content: '█';
+            animation: blink 1s step-end infinite;
         }
 
+        @keyframes blink {
+            from, to { color: transparent; }
+            50% { color: #1f6fdf; }
+        }
     </style>
 </head>
 <body>
@@ -139,7 +141,6 @@
         let synth;
 
         function setupAudio() {
-            if (typeof Tone === 'undefined') return;
             if (Tone.context.state !== 'running') {
                 Tone.start();
             }
@@ -151,14 +152,13 @@
         
         function playStartAnalysisSound() {
             if (!synth) setupAudio();
-            if (synth) {
-                synth.triggerAttackRelease('G4', '8n', Tone.now());
-                synth.triggerAttackRelease('C5', '8n', Tone.now() + 0.2);
-            }
+            synth.triggerAttackRelease('G4', '8n', Tone.now());
+            synth.triggerAttackRelease('C5', '8n', Tone.now() + 0.2);
         }
 
         // --- Lógica da Aplicação ---
         async function analisarEComparar() {
+            // Cole a URL do seu Webhook do Make.com aqui.
             const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/hsyfmx1vh2hnnjeq5yr0xrh58vhh5ls7'; // Mantenha o seu URL
 
             const textInput = document.getElementById('caseText');
@@ -179,16 +179,24 @@
             loadingDiv.style.display = 'flex';
             resultContentDiv.classList.add('hidden');
 
-            const payload = { text: caseText };
+            // Criar um payload JSON para enviar o texto
+            const payload = {
+                text: caseText
+            };
 
             try {
+                // Fazer a chamada real para o Webhook com o payload JSON
                 const response = await fetch(MAKE_WEBHOOK_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify(payload),
                 });
 
-                if (!response.ok) throw new Error(`Erro de rede: ${response.statusText}`);
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.statusText}`);
+                }
 
                 const dadosReais = await response.json();
                 renderResults(dadosReais);
@@ -197,9 +205,10 @@
                 console.error("Erro ao contactar o Webhook:", error);
                 resultContentDiv.innerHTML = `<div class="glass-card p-6 rounded-lg text-red-400">
                     <h2 class="text-xl font-semibold">Falha na Conexão</h2>
-                    <p class="mt-2">Não foi possível conectar ao servidor do Make.com. Verifique o URL do Webhook, as permissões CORS e a sua conexão. Detalhes no console.</p>
+                    <p class="mt-2">Não foi possível conectar ao servidor do Make.com. Verifique o URL do Webhook e a sua conexão. Detalhes no console.</p>
                 </div>`;
                  resultContentDiv.classList.remove('hidden');
+
             } finally {
                 loadingDiv.style.display = 'none';
             }
@@ -207,61 +216,40 @@
 
         function renderResults(data) {
              const resultContentDiv = document.getElementById('resultContent');
-             if(!data || !data.analiseFatica) {
+             if(!data || !data.resumoDoCaso) {
                 resultContentDiv.innerHTML = `<div class="glass-card p-6 rounded-lg text-amber-400">
-                    <h2 class="text-xl font-semibold">Resposta Inválida da IA</h2>
-                    <p class="mt-2">Os dados recebidos do Make.com não estão na nova estrutura esperada. Verifique se o prompt no Gemini está correto e se o JSON gerado corresponde à nova estrutura.</p>
+                    <h2 class="text-xl font-semibold">Resposta Inválida</h2>
+                    <p class="mt-2">Os dados recebidos do Make.com não estão no formato esperado. Verifique a estrutura do JSON no módulo 'Webhook Response'.</p>
                 </div>`;
                 resultContentDiv.classList.remove('hidden');
                 return;
              }
-            const fatica = data.analiseFatica;
-            const juridica = data.fundamentacaoJuridica;
-            const estrategica = data.analiseEstrategicaDefesa;
-            const jurisprudencia = data.jurisprudenciaComparada[0];
-
             resultContentDiv.innerHTML = `
-                <!-- ANÁLISE FÁTICA -->
                 <div class="glass-card p-6 rounded-lg">
-                    <h2 class="text-xl font-semibold text-gray-200 mb-4 border-b border-slate-700 pb-2">Dossiê do Caso: Análise Fática</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div><strong class="font-medium text-blue-300 block">Autor:</strong> ${fatica.partes.autor}</div>
-                        <div><strong class="font-medium text-blue-300 block">Réu:</strong> ${fatica.partes.reu}</div>
-                        <div class="md:col-span-2"><strong class="font-medium text-blue-300 block">Objeto da Ação:</strong> ${fatica.objetoDaAcao}</div>
-                    </div>
-                     <div class="mt-4"><strong class="font-medium text-blue-300 block mb-2">Fatos Relevantes Extraídos:</strong>
-                        <ul class="list-disc list-inside space-y-1 text-slate-400 pl-2">
-                            ${fatica.fatosRelevantes.map(p => `<li>${p}</li>`).join('')}
-                        </ul>
+                    <h2 class="text-xl font-semibold text-gray-200 mb-4">Diagnóstico do Caso</h2>
+                    <p class="text-gray-300"><strong class="font-medium text-blue-300">Tese Principal Identificada:</strong> ${data.resumoDoCaso.tesePrincipal}</p>
+                    <p class="text-gray-300 mt-2"><strong class="font-medium text-blue-300">Nó Crítico da Defesa:</strong> ${data.resumoDoCaso.pontoChave}</p>
+                </div>
+
+                <div class="glass-card p-6 rounded-lg">
+                    <h2 class="text-xl font-semibold text-gray-200 mb-4">Precedentes de Sucesso Encontrados</h2>
+                    <div class="space-y-4">
+                    ${data.casosSimilaresVencedores.map(caso => `
+                        <div class="glass-card p-4 rounded-md border-l-2 border-gray-600 hover:border-blue-400 transition-all duration-300">
+                            <p class="font-semibold text-gray-300">${caso.numero} - ${caso.tribunal}</p>
+                            <p class="text-sm text-gray-400 mt-1">${caso.resumo}</p>
+                            <p class="text-sm mt-3 p-3 rounded-md success-factor"><strong class="font-semibold text-green-300">Fator de Sucesso:</strong> ${caso.fator_chave_sucesso}</p>
+                        </div>
+                    `).join('')}
                     </div>
                 </div>
 
-                <!-- FUNDAMENTAÇÃO E ESTRATÉGIA -->
-                 <div class="p-6 rounded-lg shadow-lg strategic-report">
-                    <h2 class="text-2xl font-bold text-white mb-4">Relatório Estratégico da Defesa</h2>
-                    
-                    <h3 class="text-lg font-semibold mt-6 mb-2 text-blue-300">Fundamentação Jurídica (Análise do Autor):</h3>
-                    <p class="text-slate-300"><strong class="font-medium">Tese Principal do Autor:</strong> ${juridica.tesePrincipalAutor}</p>
-                    <p class="text-slate-300 mt-2"><strong class="font-medium">Ponto Vulnerável Identificado:</strong> ${juridica.pontoChaveVulneravel}</p>
-                    <p class="text-slate-300 mt-2"><strong class="font-medium">Artigos Aplicáveis:</strong> ${juridica.artigosDeLeiAplicaveis.join(', ')}</p>
-                    
-                    <h3 class="text-lg font-semibold mt-6 mb-2 text-blue-300">Análise de Risco e Probabilidade:</h3>
-                    <p class="text-slate-300"><strong class="font-medium">Probabilidade de Êxito (Defesa):</strong> ${estrategica.probabilidadeDeExitoEstimada}</p>
-                     <div class="mt-2 space-y-2">
-                        ${estrategica.principaisRiscos.map(p => `<div class="p-3 rounded-md text-sm risk-factor">${p}</div>`).join('')}
-                    </div>
-
+                <div class="p-6 rounded-lg shadow-lg strategic-report">
+                    <h2 class="text-2xl font-bold text-white mb-4">Relatório Estratégico da IA</h2>
+                    <h3 class="text-lg font-semibold mt-6 mb-2 text-blue-300">Padrões de Decisão Identificados:</h3>
+                    <ul class="list-disc list-inside space-y-2 text-gray-300">${data.relatorioEstrategico.padroesIdentificados.map(p => `<li>${p}</li>`).join('')}</ul>
                     <h3 class="text-lg font-semibold mt-6 mb-2 text-blue-300">Diretrizes Táticas Sugeridas:</h3>
-                    <ul class="list-disc list-inside space-y-2 text-slate-300">
-                       ${estrategica.sugestoesParaDefesa.map(s => `<li>${s.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-white">$1</strong>')}</li>`).join('')}
-                    </ul>
-                </div>
-
-                <!-- JURISPRUDÊNCIA COMPARADA -->
-                <div class="glass-card p-6 rounded-lg">
-                    <h2 class="text-xl font-semibold text-gray-200 mb-4">Jurisprudência Comparada (Precedente de Sucesso)</h2>
-                    <p class="text-sm text-slate-400 mt-1">${jurisprudencia.resumo}</p>
-                    <p class="text-sm mt-3 p-3 rounded-md success-factor"><strong class="font-semibold text-green-300">Fator de Sucesso Decisivo:</strong> ${jurisprudencia.fator_chave_sucesso}</p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-300">${data.relatorioEstrategico.sugestoesParaDefesa.map(s => `<li>${s.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-white">$1</strong>')}</li>`).join('')}</ul>
                 </div>
             `;
             resultContentDiv.classList.remove('hidden');
@@ -269,3 +257,5 @@
     </script>
 </body>
 </html>
+
+
